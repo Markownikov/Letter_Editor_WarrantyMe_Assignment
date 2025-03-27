@@ -19,10 +19,19 @@ const Dashboard = () => {
       
       try {
         const response = await fetchLetters(googleAccessToken);
-        setLetters(response.letters);
+        // Ensure we have a valid array of letters from the response
+        if (response && response.letters) {
+          setLetters(response.letters);
+        } else {
+          // If the response does not contain letters property, set to empty array
+          console.error('Invalid response format:', response);
+          setLetters([]);
+          setError('Received an invalid response format from the server.');
+        }
       } catch (err) {
         console.error('Error fetching letters:', err);
         setError('Failed to load your letters. Please try again later.');
+        setLetters([]); // Ensure letters is always an array even on error
       } finally {
         setLoading(false);
       }
