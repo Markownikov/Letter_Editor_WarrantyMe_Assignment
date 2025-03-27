@@ -22,11 +22,17 @@ const Dashboard = () => {
         // Ensure we have a valid array of letters from the response
         if (response && response.letters) {
           setLetters(response.letters);
-        } else {
-          // If the response does not contain letters property, set to empty array
-          console.error('Invalid response format:', response);
+          // Clear any previous error message as we got a valid response
+          setError('');
+        } else if (response && response.error) {
+          // Only set error if there's an explicit error message
+          setError(response.error);
           setLetters([]);
-          setError('Received an invalid response format from the server.');
+        } else {
+          // Silently handle the case with no letters (don't show error)
+          console.warn('Response missing letters array:', response);
+          setLetters([]);
+          // Don't set an error for missing data - this is likely just no letters yet
         }
       } catch (err) {
         console.error('Error fetching letters:', err);
