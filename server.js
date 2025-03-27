@@ -193,21 +193,51 @@ app.get('/api/letters', authMiddleware, async (req, res) => {
     const { accessToken } = req.query;
     
     if (!accessToken) {
+      console.log('No access token provided for /api/letters');
       return res.status(400).json({ error: 'Google Drive access token is required' });
     }
     
+    console.log('Attempting to fetch letters with access token');
     const drive = await getGoogleDriveClient(accessToken);
     
-    const response = await drive.files.list({
-      q: "mimeType='application/vnd.google-apps.document'",
-      spaces: 'drive',
-      fields: 'files(id, name, modifiedTime)'
-    });
-    
-    res.json({ success: true, letters: response.data.files });
+    try {
+      const response = await drive.files.list({
+        q: "mimeType='application/vnd.google-apps.document'",
+        spaces: 'drive',
+        fields: 'files(id, name, modifiedTime)'
+      });
+      
+      // Ensure we have a valid response with files
+      if (response && response.data && Array.isArray(response.data.files)) {
+        console.log(`Successfully fetched ${response.data.files.length} letters`);
+        return res.json({ success: true, letters: response.data.files });
+      } else {
+        console.error('Invalid response format from Google Drive:', response);
+        // Return an empty array if the response format is unexpected
+        return res.json({ success: true, letters: [] });
+      }
+    } catch (driveError) {
+      console.error('Google Drive API Error:', driveError);
+      
+      if (driveError.code === 401 || (driveError.response && driveError.response.status === 401)) {
+        return res.status(401).json({ 
+          error: 'Google Drive authentication failed. Please log out and log in again.',
+          authError: true
+        });
+      }
+      
+      return res.status(500).json({ 
+        error: 'Failed to fetch letters from Google Drive: ' + (driveError.message || 'Unknown error'),
+        letters: [] // Include empty array to prevent client-side errors
+      });
+    }
   } catch (error) {
-    console.error('Error fetching letters:', error);
-    res.status(500).json({ error: 'Failed to fetch letters' });
+    console.error('Error in /api/letters route:', error);
+    // Return a safe response even on server error
+    res.status(500).json({ 
+      error: 'Failed to fetch letters',
+      letters: [] // Include empty array to prevent client-side errors
+    });
   }
 });
 
