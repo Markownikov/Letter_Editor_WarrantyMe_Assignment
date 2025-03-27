@@ -84,12 +84,20 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+// app.use(express.static(path.join(__dirname, 'client/build')));
+// app.use(express.static(path.join(__dirname, 'client/public')));
+// app.use("*", (req, res) => {
+//   res.sendFile(path.join(__dirname, 'client/build/index.html'));
+// }
+// );
+
+
 // Google Drive API setup
 const getGoogleDriveClient = async (accessToken) => {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    'http://localhost:3000' // Redirect URL
+    ('http://localhost:3000' || 'https://letter-editor-warrantyme-assignment.onrender.com')  // Redirect URL
   );
   oauth2Client.setCredentials({ access_token: accessToken });
   return google.drive({ version: 'v3', auth: oauth2Client });
