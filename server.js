@@ -31,13 +31,38 @@ try {
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ origin: true, credentials: true }));
-app.use(session({
+app.use(cors({ origin: [
+  'https://letter-editor-warrantyme-assignment.onrender.com',
+  'http://localhost:3000'
+], credentials: true }));
+
+// Configure session for different environments
+const sessionConfig = {
   secret: process.env.SESSION_SECRET || 'letter-editor-session-secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 3600000 } // 1 hour
-}));
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production', 
+    maxAge: 3600000, // 1 hour
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+  }
+};
+
+// Use in-memory session store for development only
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1); // trust first proxy for secure cookies
+  console.log('Using FileStore for session in production environment');
+  
+  // Use file-based session store which doesn't require additional services
+  const FileStore = require('session-file-store')(session);
+  sessionConfig.store = new FileStore({
+    path: './sessions',
+    ttl: 86400, // 1 day
+    retries: 0
+  });
+}
+
+app.use(session(sessionConfig));
 
 // Authentication Middleware
 const authMiddleware = async (req, res, next) => {
