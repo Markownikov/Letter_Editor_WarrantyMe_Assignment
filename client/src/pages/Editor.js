@@ -70,6 +70,11 @@ const Editor = () => {
       console.error('Error saving letter:', err);
       if (err.response && err.response.data && err.response.data.error) {
         setError(err.response.data.error);
+        
+        // If Google Drive quota is exceeded, provide additional guidance
+        if (err.response.status === 507 || (err.response.data && err.response.data.quotaExceeded)) {
+          setError(`${err.response.data.error} You can free up space by deleting unnecessary files from your Google Drive, or upgrade your Google account storage plan.`);
+        }
       } else {
         setError('Failed to save the letter. Please try again.');
       }

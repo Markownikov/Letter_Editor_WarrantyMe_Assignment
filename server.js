@@ -84,20 +84,26 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// app.use(express.static(path.join(__dirname, 'client/build')));
-// app.use(express.static(path.join(__dirname, 'client/public')));
-// app.use("*", (req, res) => {
-//   res.sendFile(path.join(__dirname, 'client/build/index.html'));
-// }
-// );
-
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'client/build')));
+  
+  // Handle all other routes by serving the React app
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, 'client/build/index.html'));
+  });
+}
 
 // Google Drive API setup
 const getGoogleDriveClient = async (accessToken) => {
+  const redirectUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://letter-editor-warrantyme-assignment.onrender.com' 
+    : 'http://localhost:3000';
+  
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    ('http://localhost:3000' || 'https://letter-editor-warrantyme-assignment.onrender.com')  // Redirect URL
+    redirectUrl
   );
   oauth2Client.setCredentials({ access_token: accessToken });
   return google.drive({ version: 'v3', auth: oauth2Client });
@@ -165,6 +171,14 @@ app.post('/api/save-letter', authMiddleware, async (req, res) => {
         return res.status(401).json({ error: 'Google Drive authentication failed. Please log out and log in again.' });
       }
       
+      // Check for storage quota exceeded error
+      if (driveError.message && driveError.message.includes('The user\'s Drive storage quota has been exceeded')) {
+        return res.status(507).json({ 
+          error: 'Your Google Drive storage quota has been exceeded. Please free up space in your Google Drive before saving.',
+          quotaExceeded: true
+        });
+      }
+      
       // For all other errors
       return res.status(500).json({ error: 'Failed to save to Google Drive: ' + (driveError.message || 'Unknown error') });
     }
@@ -223,15 +237,6 @@ app.get('/api/letter/:id', authMiddleware, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch letter' });
   }
 });
-
-// Serve static assets in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, 'client/build')));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'client/build/index.html'));
-  });
-}
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
